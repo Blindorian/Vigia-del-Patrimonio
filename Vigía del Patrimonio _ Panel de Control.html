@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vigía del Patrimonio - Panel de Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(18, 25, 43, 0.6);
+            --card-border: rgba(56, 189, 248, 0.2);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-cyan: #38bdf8;
+            --accent-danger: #ef4444;
+            --accent-warn: #fbbf24;
+            --accent-safe: #10b981;
+            --glass-blur: blur(12px);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(56, 189, 248, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08), transparent 25%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        /* Títulos */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 3rem;
+            font-weight: 800;
+            color: #38bdf8; /* Color sólido más seguro */
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+            margin-bottom: 0.5rem;
+            letter-spacing: -1px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 1.5rem auto;
+            line-height: 1.6;
+        }
+
+        .btn {
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0);
+        }
+
+        .btn:hover {
+            background: var(--accent-cyan);
+            color: #000;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn.connected {
+            background: var(--accent-safe);
+            border-color: var(--accent-safe);
+            color: #fff;
+        }
+
+        /* Contenedor de Tarjetas */
+        .vitrine-container {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            width: 100%;
+            max-width: 1000px;
+            margin-bottom: 3rem;
+        }
+
+        /* Glassmorphism Cards */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 300px;
+            text-align: center;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.8s ease-out backwards;
+        }
+
+        .card:nth-child(1) { animation-delay: 0.1s; }
+        .card:nth-child(2) { animation-delay: 0.2s; }
+        .card:nth-child(3) { animation-delay: 0.3s; }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent);
+            transform: skewX(-20deg);
+            transition: left 0.7s;
+        }
+
+        .card:hover::before {
+            left: 200%;
+        }
+
+        .card h3 {
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .value {
+            font-size: 4.5rem;
+            font-weight: 800;
+            margin: 1rem 0;
+            color: var(--text-main);
+            transition: color 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+        }
+
+        .value span {
+            font-size: 1.5rem;
+            margin-left: 5px;
+            color: var(--text-muted);
+        }
+
+        .status {
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+
+        .status-safe { background: rgba(16, 185, 129, 0.2); color: var(--accent-safe); }
+        .status-warn { background: rgba(251, 191, 36, 0.2); color: var(--accent-warn); }
+        .status-alert { background: rgba(239, 68, 68, 0.2); color: var(--accent-danger); animation: pulseAlert 1.5s infinite; }
+
+        /* Simulación */
+        .scenarios-container {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            animation: fadeInUp 0.8s ease-out 0.4s backwards;
+        }
+
+        .btn-scenario {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            border-radius: 6px;
+        }
+
+        .btn-scenario.danger { border-color: var(--accent-danger); color: var(--accent-danger); }
+        .btn-scenario.danger:hover { background: var(--accent-danger); color: #fff; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+        
+        .btn-scenario.warn { border-color: var(--accent-warn); color: var(--accent-warn); }
+        .btn-scenario.warn:hover { background: var(--accent-warn); color: #000; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
+        
+        .btn-scenario.safe { border-color: var(--accent-safe); color: var(--accent-safe); }
+        .btn-scenario.safe:hover { background: var(--accent-safe); color: #fff; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+
+        /* Terminal */
+        .terminal-wrapper {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+            animation: fadeInUp 0.8s ease-out 0.5s backwards;
+        }
+
+        .terminal-header {
+            background: #1e293b;
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: background 0.3s;
+        }
+        .status-dot.active { background: var(--accent-safe); box-shadow: 0 0 8px var(--accent-safe); }
+
+        .terminal-console {
+            height: 200px;
+            overflow-y: auto;
+            padding: 1rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .terminal-console p { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.02); padding-bottom: 2px;}
+        .log-data { color: var(--accent-cyan); }
+        .log-warn { color: var(--accent-warn); }
+        .log-error { color: var(--accent-danger); }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulseAlert {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Vigía del Patrimonio</h1>
+        <p>Sistema telemétrico de conservación preventiva diseñado para mitigar el deterioro higroscópico y térmico de bienes culturales en entornos de clima tropical.</p>
+        <button class="btn" id="connectBtn">Conectar Backend</button>
+    </div>
+
+    <!-- Contenedor Principal de Monitoreo -->
+    <div class="vitrine-container">
+        <!-- Tarjeta: Temperatura -->
+        <div class="card temp">
+            <h3>Temperatura</h3>
+            <div class="value" id="tempValue">--<span>°C</span></div>
+            <div class="status status-safe" id="tempStatus">Esperando datos...</div>
+        </div>
+        
+        <!-- Tarjeta: Humedad -->
+        <div class="card hum">
+            <h3>Humedad Rel.</h3>
+            <div class="value" id="humValue">--<span>%</span></div>
+            <div class="status status-safe" id="humStatus">Esperando datos...</div>
+        </div>
+
+        <!-- Tarjeta: Luz -->
+        <div class="card light">
+            <h3>Exposición UV</h3>
+            <div class="value" id="lightValue">--<span>lx</span></div>
+            <div class="status status-safe" id="lightStatus">Esperando datos...</div>
+        </div>
+    </div>
+
+    <!-- Panel de Simulación de Escenarios -->
+    <div class="scenarios-container">
+        <span style="color: var(--text-muted); font-size: 12px; margin-right: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Simular Crisis:</span>
+        <button class="btn btn-scenario danger" onclick="triggerScenario('incendio')">🔥 Conato de Incendio</button>
+        <button class="btn btn-scenario danger" onclick="triggerScenario('humedad')">💧 Alta Humedad</button>
+        <button class="btn btn-scenario warn" onclick="triggerScenario('uv')">☀️ Exposición UV</button>
+        <button class="btn btn-scenario safe" onclick="triggerScenario('optimo')">🛡️ Restaurar Óptimo</button>
+    </div>
+
+    <!-- Terminal Console -->
+    <div class="terminal-wrapper" id="terminalWrapper">
+        <div class="terminal-header" id="serialHeader">
+            <span>Terminal de Telemetría</span>
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="serialStatusIndicator">DESCONECTADO</span>
+            </div>
+        </div>
+        <div class="terminal-console" id="terminalConsole">
+            <p><span style="color: #64748b;">[Sistema]</span> Iniciando interfaz gráfica...</p>
+        </div>
+    </div>
+
+    <script>
+        const terminal = document.getElementById('terminalConsole');
+        const serialStatusIndicator = document.getElementById('serialStatusIndicator');
+        const statusDot = document.getElementById('statusDot');
+        const connectBtn = document.getElementById('connectBtn');
+        let ws = null;
+
+        // Escribir en terminal
+        function writeToTerminal(message, type = 'data') {
+            const p = document.createElement('p');
+            const time = new Date().toLocaleTimeString('es-ES', { hour12: false });
+            p.innerHTML = `<span style="color: #64748b;">[${time}]</span> <span class="log-${type}">${message}</span>`;
+            terminal.appendChild(p);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Actualizar UI
+        function updateStatus(id, value, safeMin, safeMax, dangerLimit, isTemp=false) {
+            const el = document.getElementById(id);
+            if (value >= dangerLimit || value <= safeMin/2) {
+                el.className = 'status status-alert';
+                el.innerText = 'Riesgo Crítico';
+            } else if (value >= safeMax || value <= safeMin) {
+                el.className = 'status status-warn';
+                el.innerText = 'Atención Requerida';
+            } else {
+                el.className = 'status status-safe';
+                el.innerText = 'Condiciones Óptimas';
+            }
+        }
+
+        function processData(data) {
+            writeToTerminal(`RX -> ${JSON.stringify(data)}`, 'data');
+
+            // Temperatura
+            if (data.temperature !== undefined) {
+                const temp = data.temperature;
+                document.getElementById('tempValue').innerHTML = temp.toFixed(1) + '<span>°C</span>';
+                updateStatus('tempStatus', temp, 18, 25, 28, true);
+                document.getElementById('tempValue').style.color = temp >= 28 ? 'var(--accent-danger)' : 'var(--text-main)';
+            }
+
+            // Humedad
+            if (data.humidity !== undefined) {
+                const hum = data.humidity;
+                document.getElementById('humValue').innerHTML = hum.toFixed(1) + '<span>%</span>';
+                updateStatus('humStatus', hum, 40, 60, 70);
+                document.getElementById('humValue').style.color = hum >= 70 ? 'var(--accent-danger)' : 'var(--text-main)';
+            } else if (data.simulated) {
+                // Generar humedad simulada si no viene
+                const hum = data.temperature > 30 ? 20.1 : 50.0;
+                document.getElementById('humValue').innerHTML = hum.toFixed(1) + '<span>%</span>';
+                updateStatus('humStatus', hum, 40, 60, 70);
+            }
+
+            // Luz
+            if (data.light !== undefined) {
+                const light = data.light;
+                document.getElementById('lightValue').innerHTML = light + '<span>lx</span>';
+                updateStatus('lightStatus', light, 0, 500, 800);
+                document.getElementById('lightValue').style.color = light >= 800 ? 'var(--accent-warn)' : 'var(--text-main)';
+            }
+        }
+
+        // Simulación de escenarios
+        function triggerScenario(type) {
+            writeToTerminal(`[COMANDO] Enviando escenario: ${type.toUpperCase()}`, 'warn');
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ command: type }));
+            } else {
+                writeToTerminal('Esperando conexión con el backend...', 'error');
+            }
+            // Ya no forzamos la actualización visual falsa en la web.
+            // Ahora la web se actualizará sola cuando la Micro:bit responda con los nuevos datos.
+        }
+
+        // Conexión WebSockets al Backend Python
+        connectBtn.addEventListener('click', () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                writeToTerminal('Ya estás conectado.', 'warn');
+                return;
+            }
+
+            writeToTerminal('Intentando conectar al backend...', 'info');
+            ws = new WebSocket("ws://localhost:8000/ws");
+
+            ws.onopen = function() {
+                writeToTerminal('Conexión WS establecida con éxito.', 'safe');
+                connectBtn.innerText = "Monitoreo Activo";
+                connectBtn.classList.add('connected');
+                serialStatusIndicator.innerText = "CONECTADO A BACKEND";
+                statusDot.classList.add('active');
+            };
+
+            ws.onmessage = function(event) {
+                try {
+                    // Intenta procesar JSON (el backend envía JSON)
+                    const data = JSON.parse(event.data);
+                    processData(data);
+                } catch (e) {
+                    // Si el backend envía texto plano en lugar de JSON (Microbit crudo)
+                    const textData = event.data;
+                    
+                    // Lógica del regex original
+                    let temp, hum, light;
+                    
+                    const tempMatch = textData.match(/(?:T:|Temp|Tempe?ratura|Temeratura)[\s:=]*([\d.]+)/i);
+                    if (tempMatch) temp = parseFloat(tempMatch[1]);
+                    
+                    const humMatch = textData.match(/(?:H:|Hum|Humedad)[\s:=]*([\d.]+)/i);
+                    if (humMatch) hum = parseFloat(humMatch[1]);
+                    
+                    const lightMatch = textData.match(/(?:L:|Lz|Luz)[\s:=]*([\d.]+)/i);
+                    if (lightMatch) light = parseInt(lightMatch[1]);
+                    
+                    processData({ temperature: temp, humidity: hum, light: light });
+                }
+            };
+
+            ws.onclose = function() {
+                writeToTerminal('Conexión WS cerrada.', 'error');
+                connectBtn.innerText = "Reconectar";
+                connectBtn.classList.remove('connected');
+                serialStatusIndicator.innerText = "DESCONECTADO";
+                statusDot.classList.remove('active');
+            };
+
+            ws.onerror = function(err) {
+                writeToTerminal('Error de conexión WS. ¿Está ejecutándose backend.py?', 'error');
+            };
+        });
+
+    </script>
+</body>
+</html>
