@@ -8,33 +8,36 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <div class="header">
         <h1>Vigía del Patrimonio</h1>
         <p>Sistema telemétrico de conservación preventiva diseñado para mitigar el deterioro higroscópico y térmico de bienes culturales en entornos de clima tropical.</p>
-        <button class="btn" id="connectBtn">Conectar Backend</button>
+        <div class="header-controls">
+            <button class="btn" id="connectBtn">Conectar Backend</button>
+            <button class="btn mode-btn" id="modeBtn" type="button">Modo: Papel</button>
+        </div>
     </div>
-
+    <div class="mode-info">
+        <span>Material monitoreado:</span>
+        <strong id="modeName">Papel</strong>
+        <small>Haz clic en el botón de modo o presiona B en la Micro:bit para cambiar.</small>
+    </div>
     <div class="vitrine-container">
         <div class="card temp">
             <h3>Temperatura</h3>
             <div class="value" id="tempValue">--<span>°C</span></div>
             <div class="status status-safe" id="tempStatus">Esperando datos...</div>
         </div>
-        
         <div class="card hum">
             <h3>Humedad Rel.</h3>
             <div class="value" id="humValue">--<span>%</span></div>
             <div class="status status-safe" id="humStatus">Esperando datos...</div>
         </div>
-
         <div class="card light">
             <h3>Exposición UV</h3>
             <div class="value" id="lightValue">--<span>lx</span></div>
             <div class="status status-safe" id="lightStatus">Esperando datos...</div>
         </div>
     </div>
-
     <div class="scenarios-container">
         <span style="color: var(--text-muted); font-size: 12px; margin-right: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Simular Crisis:</span>
         <button class="btn btn-scenario danger" onclick="triggerScenario('incendio')">🔥 Conato de Incendio</button>
@@ -42,7 +45,6 @@
         <button class="btn btn-scenario warn" onclick="triggerScenario('uv')">☀️ Exposición UV</button>
         <button class="btn btn-scenario safe" onclick="triggerScenario('optimo')">🛡️ Restaurar Óptimo</button>
     </div>
-
     <div class="terminal-wrapper" id="terminalWrapper">
         <div class="terminal-header" id="serialHeader">
             <span>Terminal de Telemetría</span>
@@ -55,7 +57,6 @@
             <p><span style="color: #64748b;">[Sistema]</span> Iniciando interfaz gráfica...</p>
         </div>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>

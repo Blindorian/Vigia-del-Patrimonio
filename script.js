@@ -1,132 +1,175 @@
-const terminal = document.getElementById('terminalConsole');
-const serialStatusIndicator = document.getElementById('serialStatusIndicator');
-const statusDot = document.getElementById('statusDot');
-const connectBtn = document.getElementById('connectBtn');
-let ws = null;
+const terminal=document.getElementById('terminalConsole');
+const serialStatusIndicator=document.getElementById('serialStatusIndicator');
+const statusDot=document.getElementById('statusDot');
+const connectBtn=document.getElementById('connectBtn');
+const modeBtn=document.getElementById('modeBtn');
+const modeName=document.getElementById('modeName');
+let ws=null;
+let currentModeIndex=0;
 
-// Escribir en terminal
-function writeToTerminal(message, type = 'data') {
-    const p = document.createElement('p');
-    const time = new Date().toLocaleTimeString('es-ES', { hour12: false });
-    p.innerHTML = `<span style="color: #64748b;">[${time}]</span> <span class="log-${type}">${message}</span>`;
+const MODES=[
+    {name:'Papel',temperature:{safeMin:18,safeMax:25,warnMin:16,warnMax:28,criticalMin:14,criticalMax:30},humidity:{safeMin:40,safeMax:60,warnMin:35,warnMax:70,criticalMin:30,criticalMax:75},light:{safeMax:500,warnMax:500,criticalMax:800}},
+    {name:'Textiles',temperature:{safeMin:18,safeMax:21,warnMin:16,warnMax:24,criticalMin:14,criticalMax:26},humidity:{safeMin:45,safeMax:55,warnMin:40,warnMax:65,criticalMin:35,criticalMax:70},light:{safeMax:50,warnMax:50,criticalMax:100}},
+    {name:'Metal',temperature:{safeMin:18,safeMax:25,warnMin:15,warnMax:28,criticalMin:10,criticalMax:30},humidity:{safeMin:40,safeMax:55,warnMin:30,warnMax:65,criticalMin:25,criticalMax:70},light:{safeMax:300,warnMax:300,criticalMax:600}},
+    {name:'Madera',temperature:{safeMin:18,safeMax:25,warnMin:15,warnMax:28,criticalMin:12,criticalMax:30},humidity:{safeMin:45,safeMax:55,warnMin:40,warnMax:65,criticalMin:35,criticalMax:70},light:{safeMax:150,warnMax:150,criticalMax:300}},
+    {name:'Pinturas',temperature:{safeMin:16,safeMax:25,warnMin:14,warnMax:28,criticalMin:10,criticalMax:30},humidity:{safeMin:40,safeMax:60,warnMin:35,warnMax:65,criticalMin:30,criticalMax:70},light:{safeMax:150,warnMax:150,criticalMax:300}}
+];
+
+function writeToTerminal(message,type='data'){
+    const p=document.createElement('p');
+    const time=new Date().toLocaleTimeString('es-ES',{hour12:false});
+    p.innerHTML=`<span style="color:#64748b;">[${time}]</span> <span class="log-${type}">${message}</span>`;
     terminal.appendChild(p);
-    terminal.scrollTop = terminal.scrollHeight;
+    terminal.scrollTop=terminal.scrollHeight;
 }
 
-// Actualizar UI según los umbrales tolerados en clima tropical
-function updateStatus(id, value, safeMin, safeMax, dangerLimit) {
-    const el = document.getElementById(id);
-    if (value >= dangerLimit || value <= safeMin / 2) {
-        el.className = 'status status-alert';
-        el.innerText = 'Riesgo Crítico';
-    } else if (value >= safeMax || value <= safeMin) {
-        el.className = 'status status-warn';
-        el.innerText = 'Atención Requerida';
-    } else {
-        el.className = 'status status-safe';
-        el.innerText = 'Condiciones Óptimas';
-    }
+function setMode(index,announce=true){
+    index=parseInt(index);
+    if(isNaN(index)||index<0||index>=MODES.length) index=0;
+    currentModeIndex=index;
+    const mode=MODES[currentModeIndex];
+    modeBtn.textContent=`Modo: ${mode.name}`;
+    modeName.textContent=mode.name;
+    if(announce) writeToTerminal(`[MODO] Monitoreando: ${mode.name}`,'info');
+    refreshStatuses();
 }
 
-// Procesar los datos de los sensores e iluminar el panel
-function processData(data) {
-    writeToTerminal(`RX -> ${JSON.stringify(data)}`, 'data');
-
-    // Procesar Temperatura
-    if (data.temperature !== undefined) {
-        const temp = data.temperature;
-        document.getElementById('tempValue').innerHTML = temp.toFixed(1) + '<span>°C</span>';
-        updateStatus('tempStatus', temp, 18, 25, 28);
-        document.getElementById('tempValue').style.color = temp >= 28 ? 'var(--accent-danger)' : 'var(--text-main)';
-    }
-
-    // Procesar Humedad Relativa
-    if (data.humidity !== undefined) {
-        const hum = data.humidity;
-        document.getElementById('humValue').innerHTML = hum.toFixed(1) + '<span>%</span>';
-        updateStatus('humStatus', hum, 40, 60, 70);
-        document.getElementById('humValue').style.color = hum >= 70 ? 'var(--accent-danger)' : 'var(--text-main)';
-    } else if (data.simulated && data.temperature !== undefined) {
-        // Fallback inteligente por si se parsea texto plano incompleto
-        const hum = data.temperature > 30 ? 20.1 : 50.0;
-        document.getElementById('humValue').innerHTML = hum.toFixed(1) + '<span>%</span>';
-        updateStatus('humStatus', hum, 40, 60, 70);
-    }
-
-    // Procesar Exposición Lumínica / UV
-    if (data.light !== undefined) {
-        const light = data.light;
-        document.getElementById('lightValue').innerHTML = light + '<span>lx</span>';
-        updateStatus('lightStatus', light, 0, 500, 800);
-        document.getElementById('lightValue').style.color = light >= 800 ? 'var(--accent-warn)' : 'var(--text-main)';
-    }
-}
-
-// Simulación de escenarios críticos enviados al backend
-function triggerScenario(type) {
-    writeToTerminal(`[COMANDO] Enviando escenario: ${type.toUpperCase()}`, 'warn');
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ command: type }));
-    } else {
-        writeToTerminal('Esperando conexión con el backend...', 'error');
-    }
-}
-
-// Conexión WebSockets al Backend de Python
-connectBtn.addEventListener('click', () => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        writeToTerminal('Ya estás conectado, panita.', 'warn');
+function requestNextMode(){
+    if(!ws||ws.readyState!==WebSocket.OPEN){
+        writeToTerminal('Conecta primero el Backend para cambiar el modo del sistema.','error');
         return;
     }
+    writeToTerminal('[COMANDO] Cambiando al siguiente material...','info');
+    ws.send(JSON.stringify({command:'cambiar_modo'}));
+}
 
-    writeToTerminal('Intentando conectar al backend...', 'info'); // Cambiado a 'info' con estilo propio
-    ws = new WebSocket("ws://localhost:8000/ws");
+modeBtn.addEventListener('click',requestNextMode);
 
-    ws.onopen = function() {
-        writeToTerminal('Conexión WS establecida con éxito.', 'safe');
-        connectBtn.innerText = "Monitoreo Activo";
+function getRisk(value,limits,isLight=false){
+    if(isLight){
+        if(value>=limits.criticalMax)return 'critical';
+        if(value>=limits.warnMax)return 'warning';
+        return 'safe';
+    }
+    if(value<=limits.criticalMin||value>=limits.criticalMax)return 'critical';
+    if(value<=limits.warnMin||value>=limits.warnMax)return 'warning';
+    return 'safe';
+}
+
+function updateStatus(id,value,limits,isLight=false){
+    const el=document.getElementById(id);
+    const risk=getRisk(value,limits,isLight);
+    if(risk==='critical'){
+        el.className='status status-alert';
+        el.innerText='Riesgo Crítico';
+    }else if(risk==='warning'){
+        el.className='status status-warn';
+        el.innerText='Atención Requerida';
+    }else{
+        el.className='status status-safe';
+        el.innerText='Condiciones Óptimas';
+    }
+}
+
+function updateValueColor(id,value,limits,isLight=false){
+    const el=document.getElementById(id);
+    const risk=getRisk(value,limits,isLight);
+    if(risk==='critical')el.style.color='var(--accent-danger)';
+    else if(risk==='warning')el.style.color='var(--accent-warn)';
+    else el.style.color='var(--text-main)';
+}
+
+let lastData={};
+
+function refreshStatuses(){
+    const mode=MODES[currentModeIndex];
+    if(lastData.temperature!==undefined){
+        updateStatus('tempStatus',lastData.temperature,mode.temperature);
+        updateValueColor('tempValue',lastData.temperature,mode.temperature);
+    }
+    if(lastData.humidity!==undefined){
+        updateStatus('humStatus',lastData.humidity,mode.humidity);
+        updateValueColor('humValue',lastData.humidity,mode.humidity);
+    }
+    if(lastData.light!==undefined){
+        updateStatus('lightStatus',lastData.light,mode.light,true);
+        updateValueColor('lightValue',lastData.light,mode.light,true);
+    }
+}
+
+function processData(data){
+    writeToTerminal(`RX -> ${JSON.stringify(data)}`,'data');
+    if(data.mode_index!==undefined)setMode(data.mode_index,false);
+    if(data.temperature!==undefined){
+        const temp=parseFloat(data.temperature);
+        lastData.temperature=temp;
+        document.getElementById('tempValue').innerHTML=temp.toFixed(1)+'<span>°C</span>';
+    }
+    if(data.humidity!==undefined){
+        const hum=parseFloat(data.humidity);
+        lastData.humidity=hum;
+        document.getElementById('humValue').innerHTML=hum.toFixed(1)+'<span>%</span>';
+    }
+    if(data.light!==undefined){
+        const light=parseInt(data.light);
+        lastData.light=light;
+        document.getElementById('lightValue').innerHTML=light+'<span>lx</span>';
+    }
+    refreshStatuses();
+}
+
+function triggerScenario(type){
+    writeToTerminal(`[COMANDO] Enviando escenario: ${type.toUpperCase()}`,'warn');
+    if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({command:type}));
+    else writeToTerminal('Esperando conexión con el backend...','error');
+}
+
+connectBtn.addEventListener('click',()=>{
+    if(ws&&ws.readyState===WebSocket.OPEN){
+        writeToTerminal('Ya estás conectado.','warn');
+        return;
+    }
+    writeToTerminal('Intentando conectar al backend...','info');
+    ws=new WebSocket('ws://localhost:8000/ws');
+    ws.onopen=()=>{
+        writeToTerminal('Conexión WS establecida con éxito.','safe');
+        connectBtn.innerText='Monitoreo Activo';
         connectBtn.classList.add('connected');
-        serialStatusIndicator.innerText = "CONECTADO A BACKEND";
+        serialStatusIndicator.innerText='CONECTADO A BACKEND';
         statusDot.classList.add('active');
     };
-
-    ws.onmessage = function(event) {
-        try {
-            // Caso ideal: El backend manda JSON estructurado
-            const data = JSON.parse(event.data);
+    ws.onmessage=event=>{
+        try{
+            const data=JSON.parse(event.data);
+            if(data.type==='mode'){
+                setMode(data.mode_index,true);
+                return;
+            }
             processData(data);
-        } catch (e) {
-            // Caso de emergencia: Parseo de strings crudos desde la Micro:bit
-            const textData = event.data;
-            let dataToProcess = {};
-            
-            const tempMatch = textData.match(/(?:T:|Temp|Tempe?ratura|Temeratura)[\s:=]*([\d.]+)/i);
-            if (tempMatch) dataToProcess.temperature = parseFloat(tempMatch[1]);
-            
-            const humMatch = textData.match(/(?:H:|Hum|Humedad)[\s:=]*([\d.]+)/i);
-            if (humMatch) dataToProcess.humidity = parseFloat(humMatch[1]);
-            
-            const lightMatch = textData.match(/(?:L:|Lz|Luz)[\s:=]*([\d.]+)/i);
-            if (lightMatch) dataToProcess.light = parseInt(lightMatch[1]);
-            
-            // Avisamos a la lógica que es un dato simulado/forzado para evitar cuelgues
-            dataToProcess.simulated = true;
-            
-            processData(dataToProcess);
+        }catch(e){
+            const textData=event.data;
+            const data={};
+            const tempMatch=textData.match(/(?:T:|Temp|Tempe?ratura|Temeratura)[\s:=]*([\d.]+)/i);
+            const humMatch=textData.match(/(?:H:|Hum|Humedad)[\s:=]*([\d.]+)/i);
+            const lightMatch=textData.match(/(?:L:|Lz|Luz)[\s:=]*([\d.]+)/i);
+            const modeMatch=textData.match(/(?:MODO|MODE)[\s:=]*(\d+)/i);
+            if(tempMatch)data.temperature=parseFloat(tempMatch[1]);
+            if(humMatch)data.humidity=parseFloat(humMatch[1]);
+            if(lightMatch)data.light=parseInt(lightMatch[1]);
+            if(modeMatch)data.mode_index=parseInt(modeMatch[1]);
+            processData(data);
         }
     };
-
-    ws.onclose = function() {
-        writeToTerminal('Conexión WS cerrada.', 'error');
-        connectBtn.innerText = "Reconectar";
+    ws.onclose=()=>{
+        writeToTerminal('Conexión WS cerrada.','error');
+        connectBtn.innerText='Reconectar';
         connectBtn.classList.remove('connected');
-        serialStatusIndicator.innerText = "DESCONECTADO";
+        serialStatusIndicator.innerText='DESCONECTADO';
         statusDot.classList.remove('active');
     };
-
-    ws.onerror = function(err) {
-        writeToTerminal('Error de conexión WS. ¿Está ejecutándose backend.py, compa?', 'error');
+    ws.onerror=()=>{
+        writeToTerminal('Error de conexión WS. ¿Está ejecutándose backend.py?','error');
     };
 });
 
-//pana panita pana
+setMode(0,false);

@@ -1,133 +1,233 @@
-# Integración Bidireccional: Micro:bit y Panel Web
-
-Para que tu Micro:bit entienda las simulaciones que envías desde la página web (a través de nuestro nuevo Backend de Python), necesitamos actualizar ligeramente su código. 
-
-## ¿Qué cambia en el código?
-1. **Modo Simulación:** Agregamos una variable global `simulacion_activa`. 
-2. **Recepción Serial:** Usamos la función `serial.on_data_received` para "escuchar" la terminal.
-3. **Pausa de Hardware:** Cuando la placa recibe un comando como `"incendio"`, activa el modo simulación. Esto significa que **deja de leer los sensores físicos** y adopta los valores catastróficos, activando físicamente los LEDs y el Buzzer tal como si estuviera sucediendo de verdad. 
-4. **Comando `"optimo"`:** Apaga el modo simulación y obliga al Micro:bit a volver a hacerle caso a sus sensores de hardware.
-
-## Código en Python (MakeCode)
-
-Copia y pega este código en la vista de **Python** dentro de MakeCode:
-
 ```python
-"""
---- VARIABLES GLOBALES ---
-"""
-hum_c = 0
-temp_c = 0
-luz = 0
-humedad = 0
-temperatura = 0
-simulacion_activa = False
+hum_c=0
+temp_c=0
+luz=0
+humedad=0
+temperatura=0
+simulacion_activa=False
+estado="verde"
+modo_actual=0
+TOTAL_MODOS=5
 
-# --- CONFIGURACIÓN DE PINES ---
-PIN_BUZZER = DigitalPin.P16
-PIN_LDR = AnalogPin.P1
-PIN_DHT = DigitalPin.P0
+MODO_PAPEL=0
+MODO_TEXTILES=1
+MODO_METAL=2
+MODO_MADERA=3
+MODO_PINTURAS=4
 
-# --- CONFIGURACIÓN DE LED ---
-ES_ANODO_COMUN = False
-estado = "verde"
+PIN_BUZZER=DigitalPin.P16
+PIN_LDR=AnalogPin.P1
+PIN_DHT=DigitalPin.P0
+ES_ANODO_COMUN=False
 
-# --- UMBRALES ---
-TEMP_CRITICA = 28
-HUM_CRITICA = 70
-LUZ_CRITICA = 800
+PAPEL_TEMP_MIN=18
+PAPEL_TEMP_MAX=25
+PAPEL_TEMP_CRITICA_BAJA=14
+PAPEL_TEMP_CRITICA_ALTA=30
+PAPEL_HUM_MIN=40
+PAPEL_HUM_MAX=60
+PAPEL_HUM_CRITICA_BAJA=30
+PAPEL_HUM_CRITICA_ALTA=75
+PAPEL_LUZ_WARN=500
+PAPEL_LUZ_CRITICA=800
+
+TEXTIL_TEMP_MIN=18
+TEXTIL_TEMP_MAX=21
+TEXTIL_TEMP_CRITICA_BAJA=14
+TEXTIL_TEMP_CRITICA_ALTA=26
+TEXTIL_HUM_MIN=45
+TEXTIL_HUM_MAX=55
+TEXTIL_HUM_CRITICA_BAJA=35
+TEXTIL_HUM_CRITICA_ALTA=70
+TEXTIL_LUZ_WARN=50
+TEXTIL_LUZ_CRITICA=100
+
+METAL_TEMP_MIN=18
+METAL_TEMP_MAX=25
+METAL_TEMP_CRITICA_BAJA=10
+METAL_TEMP_CRITICA_ALTA=30
+METAL_HUM_MIN=40
+METAL_HUM_MAX=55
+METAL_HUM_CRITICA_BAJA=25
+METAL_HUM_CRITICA_ALTA=70
+METAL_LUZ_WARN=300
+METAL_LUZ_CRITICA=600
+
+MADERA_TEMP_MIN=18
+MADERA_TEMP_MAX=25
+MADERA_TEMP_CRITICA_BAJA=12
+MADERA_TEMP_CRITICA_ALTA=30
+MADERA_HUM_MIN=45
+MADERA_HUM_MAX=55
+MADERA_HUM_CRITICA_BAJA=35
+MADERA_HUM_CRITICA_ALTA=70
+MADERA_LUZ_WARN=150
+MADERA_LUZ_CRITICA=300
+
+PINTURA_TEMP_MIN=16
+PINTURA_TEMP_MAX=25
+PINTURA_TEMP_CRITICA_BAJA=10
+PINTURA_TEMP_CRITICA_ALTA=30
+PINTURA_HUM_MIN=40
+PINTURA_HUM_MAX=60
+PINTURA_HUM_CRITICA_BAJA=30
+PINTURA_HUM_CRITICA_ALTA=70
+PINTURA_LUZ_WARN=150
+PINTURA_LUZ_CRITICA=300
+
+def set_rgb(r:number,g:number,b:number):
+    if ES_ANODO_COMUN:
+        pins.digital_write_pin(DigitalPin.P8,1-r)
+        pins.digital_write_pin(DigitalPin.P12,1-g)
+        pins.digital_write_pin(DigitalPin.P13,1-b)
+    else:
+        pins.digital_write_pin(DigitalPin.P8,r)
+        pins.digital_write_pin(DigitalPin.P12,g)
+        pins.digital_write_pin(DigitalPin.P13,b)
+
+def nombre_modo():
+    if modo_actual==MODO_PAPEL:
+        return "Papel"
+    elif modo_actual==MODO_TEXTILES:
+        return "Textiles"
+    elif modo_actual==MODO_METAL:
+        return "Metal"
+    elif modo_actual==MODO_MADERA:
+        return "Madera"
+    return "Pinturas"
+
+def enviar_modo():
+    serial.write_line('{"type":"mode","mode_index":'+str(modo_actual)+',"mode":"'+nombre_modo()+'"}')
+
+def mostrar_modo():
+    if modo_actual==MODO_PAPEL:
+        basic.show_string("PAPEL")
+    elif modo_actual==MODO_TEXTILES:
+        basic.show_string("TEXTIL")
+    elif modo_actual==MODO_METAL:
+        basic.show_string("METAL")
+    elif modo_actual==MODO_MADERA:
+        basic.show_string("MADERA")
+    else:
+        basic.show_string("PINTURA")
+
+def cambiar_modo():
+    global modo_actual
+    modo_actual=(modo_actual+1)%TOTAL_MODOS
+    enviar_modo()
+    mostrar_modo()
+    basic.clear_screen()
+
+input.on_button_pressed(Button.B,cambiar_modo)
 
 def on_button_pressed_a():
-    # Fuerza una lectura manual fuera del ciclo automático.
     actualizar_sensores()
-    serial.write_line("MANUAL -> T:" + str(temperatura) + " H:" + str(humedad) + " L:" + str(luz))
+    serial.write_line('{"type":"manual","temperature":'+str(temperatura)+',"humidity":'+str(humedad)+',"light":'+str(luz)+',"mode_index":'+str(modo_actual)+'}')
     basic.show_icon(IconNames.YES)
     basic.pause(100)
     basic.clear_screen()
-input.on_button_pressed(Button.A, on_button_pressed_a)
 
-def set_rgb(r: number, g: number, b: number):
-    # Controla el LED ajustando la lógica matemáticamente.
-    if ES_ANODO_COMUN:
-        pins.digital_write_pin(DigitalPin.P8, 1 - r) # Rojo
-        pins.digital_write_pin(DigitalPin.P12, 1 - g) # Verde
-        pins.digital_write_pin(DigitalPin.P13, 1 - b) # Azul
-    else:
-        pins.digital_write_pin(DigitalPin.P8, r)
-        pins.digital_write_pin(DigitalPin.P12, g)
-        pins.digital_write_pin(DigitalPin.P13, b)
+input.on_button_pressed(Button.A,on_button_pressed_a)
 
 def actualizar_sensores():
-    global luz, temp_c, hum_c, temperatura, humedad
-    # 1. Leer LDR
-    luz = pins.analog_read_pin(PIN_LDR)
+    global luz,temp_c,hum_c,temperatura,humedad
+    luz=pins.analog_read_pin(PIN_LDR)
     basic.pause(100)
-    # 2. Leer DHT
-    dht11_dht22.query_data(DHTtype.DHT11, PIN_DHT, True, False, True)
-    temp_c = dht11_dht22.read_data(dataType.TEMPERATURE)
-    hum_c = dht11_dht22.read_data(dataType.HUMIDITY)
-    # 3. Filtros anti-error
-    if temp_c != -999:
-        temperatura = temp_c
-    if hum_c != -999:
-        humedad = hum_c
+    dht11_dht22.query_data(DHTtype.DHT11,PIN_DHT,True,False,True)
+    temp_c=dht11_dht22.read_data(dataType.TEMPERATURE)
+    hum_c=dht11_dht22.read_data(dataType.HUMIDITY)
+    if temp_c!=-999:
+        temperatura=temp_c
+    if hum_c!=-999:
+        humedad=hum_c
 
-# --- NUEVO: RECEPTOR DE COMANDOS DESDE EL PANEL WEB ---
 def on_data_received():
-    global temperatura, humedad, luz, simulacion_activa
-    comando = serial.read_until(serial.delimiters(Delimiters.NEW_LINE)).strip()
-    
-    if comando == "incendio":
-        simulacion_activa = True
-        temperatura = 45.5
-        humedad = 20.1
-        luz = 850
-    elif comando == "inundacion":
-        simulacion_activa = True
-        temperatura = 18.2
-        humedad = 88.5
-        luz = 150
-    elif comando == "luz":
-        simulacion_activa = True
-        temperatura = 26.0
-        humedad = 55.0
-        luz = 950
-    elif comando == "optimo":
-        simulacion_activa = False # Volver a leer los sensores físicos reales
+    global temperatura,humedad,luz,simulacion_activa,modo_actual
+    comando=serial.read_until(serial.delimiters(Delimiters.NEW_LINE)).strip()
+    comando_upper=comando.upper()
+    if comando_upper.startswith("MODO:") or comando_upper.startswith("MODE:"):
+        try:
+            nuevo_modo=int(comando.split(":")[1].strip())
+            if nuevo_modo>=0 and nuevo_modo<TOTAL_MODOS:
+                modo_actual=nuevo_modo
+                enviar_modo()
+                mostrar_modo()
+                basic.clear_screen()
+        except:
+            pass
+    elif comando=="incendio":
+        simulacion_activa=True
+        temperatura=45.5
+        humedad=20.1
+        luz=850
+    elif comando=="inundacion":
+        simulacion_activa=True
+        temperatura=18.2
+        humedad=88.5
+        luz=150
+    elif comando=="humedad":
+        simulacion_activa=True
+        temperatura=24
+        humedad=88
+        luz=150
+    elif comando=="uv" or comando=="luz":
+        simulacion_activa=True
+        temperatura=26
+        humedad=55
+        luz=950
+    elif comando=="optimo":
+        simulacion_activa=False
 
-serial.on_data_received(serial.delimiters(Delimiters.NEW_LINE), on_data_received)
+serial.on_data_received(serial.delimiters(Delimiters.NEW_LINE),on_data_received)
 
+def evaluar_riesgo():
+    global estado
+    critico=False
+    advertencia=False
+    if modo_actual==MODO_PAPEL:
+        if temperatura<=PAPEL_TEMP_CRITICA_BAJA or temperatura>=PAPEL_TEMP_CRITICA_ALTA or humedad<=PAPEL_HUM_CRITICA_BAJA or humedad>=PAPEL_HUM_CRITICA_ALTA or luz>=PAPEL_LUZ_CRITICA:
+            critico=True
+        elif temperatura<PAPEL_TEMP_MIN or temperatura>PAPEL_TEMP_MAX or humedad<PAPEL_HUM_MIN or humedad>PAPEL_HUM_MAX or luz>=PAPEL_LUZ_WARN:
+            advertencia=True
+    elif modo_actual==MODO_TEXTILES:
+        if temperatura<=TEXTIL_TEMP_CRITICA_BAJA or temperatura>=TEXTIL_TEMP_CRITICA_ALTA or humedad<=TEXTIL_HUM_CRITICA_BAJA or humedad>=TEXTIL_HUM_CRITICA_ALTA or luz>=TEXTIL_LUZ_CRITICA:
+            critico=True
+        elif temperatura<TEXTIL_TEMP_MIN or temperatura>TEXTIL_TEMP_MAX or humedad<TEXTIL_HUM_MIN or humedad>TEXTIL_HUM_MAX or luz>=TEXTIL_LUZ_WARN:
+            advertencia=True
+    elif modo_actual==MODO_METAL:
+        if temperatura<=METAL_TEMP_CRITICA_BAJA or temperatura>=METAL_TEMP_CRITICA_ALTA or humedad<=METAL_HUM_CRITICA_BAJA or humedad>=METAL_HUM_CRITICA_ALTA or luz>=METAL_LUZ_CRITICA:
+            critico=True
+        elif temperatura<METAL_TEMP_MIN or temperatura>METAL_TEMP_MAX or humedad<METAL_HUM_MIN or humedad>METAL_HUM_MAX or luz>=METAL_LUZ_WARN:
+            advertencia=True
+    elif modo_actual==MODO_MADERA:
+        if temperatura<=MADERA_TEMP_CRITICA_BAJA or temperatura>=MADERA_TEMP_CRITICA_ALTA or humedad<=MADERA_HUM_CRITICA_BAJA or humedad>=MADERA_HUM_CRITICA_ALTA or luz>=MADERA_LUZ_CRITICA:
+            critico=True
+        elif temperatura<MADERA_TEMP_MIN or temperatura>MADERA_TEMP_MAX or humedad<MADERA_HUM_MIN or humedad>MADERA_HUM_MAX or luz>=MADERA_LUZ_WARN:
+            advertencia=True
+    elif modo_actual==MODO_PINTURAS:
+        if temperatura<=PINTURA_TEMP_CRITICA_BAJA or temperatura>=PINTURA_TEMP_CRITICA_ALTA or humedad<=PINTURA_HUM_CRITICA_BAJA or humedad>=PINTURA_HUM_CRITICA_ALTA or luz>=PINTURA_LUZ_CRITICA:
+            critico=True
+        elif temperatura<PINTURA_TEMP_MIN or temperatura>PINTURA_TEMP_MAX or humedad<PINTURA_HUM_MIN or humedad>PINTURA_HUM_MAX or luz>=PINTURA_LUZ_WARN:
+            advertencia=True
+    if critico:
+        estado="rojo"
+        pins.digital_write_pin(PIN_BUZZER,1)
+        set_rgb(1,0,0)
+    elif advertencia:
+        estado="amarillo"
+        pins.digital_write_pin(PIN_BUZZER,0)
+        set_rgb(1,1,0)
+    else:
+        estado="verde"
+        pins.digital_write_pin(PIN_BUZZER,0)
+        set_rgb(0,1,0)
 
 def on_forever():
-    global estado
-    
-    # Solo leemos los sensores reales si NO estamos en una simulación web
     if not simulacion_activa:
         actualizar_sensores()
-        
-    # Lógica de estados y alertas (Aplica para datos reales o simulados)
-    if temperatura >= TEMP_CRITICA or humedad >= HUM_CRITICA or luz >= LUZ_CRITICA:
-        estado = "rojo"
-        pins.digital_write_pin(PIN_BUZZER, 1) # Buzzer ON
-        set_rgb(1, 0, 0)
-    else:
-        estado = "verde"
-        pins.digital_write_pin(PIN_BUZZER, 0) # Buzzer OFF
-        set_rgb(0, 1, 0)
-        
-    # Telemetría empaquetada enviada al servidor de Python
-    serial.write_line("T:" + str(temperatura) + " H:" + str(humedad) + " L:" + str(luz))
-    
-    # Pausas de seguridad y Buffer
-    basic.pause(100)
-    basic.pause(1000) # Reducido a 1 segundo para evitar bloqueos largos
+    evaluar_riesgo()
+    serial.write_line('{"temperature":'+str(temperatura)+',"humidity":'+str(humedad)+',"light":'+str(luz)+',"mode_index":'+str(modo_actual)+'}')
+    basic.pause(1000)
 
 basic.forever(on_forever)
 ```
-
-## Resumen del Flujo de Trabajo
-1. En tu Panel Web haces clic en **Conato de Incendio**.
-2. Tu JavaScript manda la señal JSON por WebSocket (`{"command": "incendio"}`).
-3. Tu archivo `backend.py` lee esto y le susurra al cable USB: `"incendio\n"`.
-4. El Micro:bit dispara `on_data_received()`, apaga los sensores físicos momentáneamente (`simulacion_activa = True`), inyecta los valores críticos y **enciende tu buzzer y LEDs físicos**.
-5. ¡Toda la simulación se experimenta a nivel de hardware y software al mismo tiempo! Cuando terminas, oprimes **Restaurar Óptimo** y la placa vuelve a la normalidad.
