@@ -7,13 +7,11 @@ temperatura=0
 simulacion_activa=False
 estado="verde"
 modo_actual=0
-TOTAL_MODOS=5
+TOTAL_MODOS=3
 
 MODO_PAPEL=0
 MODO_TEXTILES=1
 MODO_METAL=2
-MODO_MADERA=3
-MODO_PINTURAS=4
 
 PIN_BUZZER=DigitalPin.P16
 PIN_LDR=AnalogPin.P1
@@ -53,27 +51,6 @@ METAL_HUM_CRITICA_ALTA=70
 METAL_LUZ_WARN=300
 METAL_LUZ_CRITICA=600
 
-MADERA_TEMP_MIN=18
-MADERA_TEMP_MAX=25
-MADERA_TEMP_CRITICA_BAJA=12
-MADERA_TEMP_CRITICA_ALTA=30
-MADERA_HUM_MIN=45
-MADERA_HUM_MAX=55
-MADERA_HUM_CRITICA_BAJA=35
-MADERA_HUM_CRITICA_ALTA=70
-MADERA_LUZ_WARN=150
-MADERA_LUZ_CRITICA=300
-
-PINTURA_TEMP_MIN=16
-PINTURA_TEMP_MAX=25
-PINTURA_TEMP_CRITICA_BAJA=10
-PINTURA_TEMP_CRITICA_ALTA=30
-PINTURA_HUM_MIN=40
-PINTURA_HUM_MAX=60
-PINTURA_HUM_CRITICA_BAJA=30
-PINTURA_HUM_CRITICA_ALTA=70
-PINTURA_LUZ_WARN=150
-PINTURA_LUZ_CRITICA=300
 
 def set_rgb(r:number,g:number,b:number):
     if ES_ANODO_COMUN:
@@ -92,9 +69,6 @@ def nombre_modo():
         return "Textiles"
     elif modo_actual==MODO_METAL:
         return "Metal"
-    elif modo_actual==MODO_MADERA:
-        return "Madera"
-    return "Pinturas"
 
 def enviar_modo():
     serial.write_line('{"type":"mode","mode_index":'+str(modo_actual)+',"mode":"'+nombre_modo()+'"}')
@@ -106,10 +80,6 @@ def mostrar_modo():
         basic.show_string("TEXTIL")
     elif modo_actual==MODO_METAL:
         basic.show_string("METAL")
-    elif modo_actual==MODO_MADERA:
-        basic.show_string("MADERA")
-    else:
-        basic.show_string("PINTURA")
 
 def cambiar_modo():
     global modo_actual
@@ -199,16 +169,7 @@ def evaluar_riesgo():
             critico=True
         elif temperatura<METAL_TEMP_MIN or temperatura>METAL_TEMP_MAX or humedad<METAL_HUM_MIN or humedad>METAL_HUM_MAX or luz>=METAL_LUZ_WARN:
             advertencia=True
-    elif modo_actual==MODO_MADERA:
-        if temperatura<=MADERA_TEMP_CRITICA_BAJA or temperatura>=MADERA_TEMP_CRITICA_ALTA or humedad<=MADERA_HUM_CRITICA_BAJA or humedad>=MADERA_HUM_CRITICA_ALTA or luz>=MADERA_LUZ_CRITICA:
-            critico=True
-        elif temperatura<MADERA_TEMP_MIN or temperatura>MADERA_TEMP_MAX or humedad<MADERA_HUM_MIN or humedad>MADERA_HUM_MAX or luz>=MADERA_LUZ_WARN:
-            advertencia=True
-    elif modo_actual==MODO_PINTURAS:
-        if temperatura<=PINTURA_TEMP_CRITICA_BAJA or temperatura>=PINTURA_TEMP_CRITICA_ALTA or humedad<=PINTURA_HUM_CRITICA_BAJA or humedad>=PINTURA_HUM_CRITICA_ALTA or luz>=PINTURA_LUZ_CRITICA:
-            critico=True
-        elif temperatura<PINTURA_TEMP_MIN or temperatura>PINTURA_TEMP_MAX or humedad<PINTURA_HUM_MIN or humedad>PINTURA_HUM_MAX or luz>=PINTURA_LUZ_WARN:
-            advertencia=True
+    
     if critico:
         estado="rojo"
         pins.digital_write_pin(PIN_BUZZER,1)

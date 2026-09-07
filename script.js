@@ -11,8 +11,6 @@ const MODES=[
     {name:'Papel',temperature:{safeMin:18,safeMax:25,warnMin:16,warnMax:28,criticalMin:14,criticalMax:30},humidity:{safeMin:40,safeMax:60,warnMin:35,warnMax:70,criticalMin:30,criticalMax:75},light:{safeMax:500,warnMax:500,criticalMax:800}},
     {name:'Textiles',temperature:{safeMin:18,safeMax:21,warnMin:16,warnMax:24,criticalMin:14,criticalMax:26},humidity:{safeMin:45,safeMax:55,warnMin:40,warnMax:65,criticalMin:35,criticalMax:70},light:{safeMax:50,warnMax:50,criticalMax:100}},
     {name:'Metal',temperature:{safeMin:18,safeMax:25,warnMin:15,warnMax:28,criticalMin:10,criticalMax:30},humidity:{safeMin:40,safeMax:55,warnMin:30,warnMax:65,criticalMin:25,criticalMax:70},light:{safeMax:300,warnMax:300,criticalMax:600}},
-    {name:'Madera',temperature:{safeMin:18,safeMax:25,warnMin:15,warnMax:28,criticalMin:12,criticalMax:30},humidity:{safeMin:45,safeMax:55,warnMin:40,warnMax:65,criticalMin:35,criticalMax:70},light:{safeMax:150,warnMax:150,criticalMax:300}},
-    {name:'Pinturas',temperature:{safeMin:16,safeMax:25,warnMin:14,warnMax:28,criticalMin:10,criticalMax:30},humidity:{safeMin:40,safeMax:60,warnMin:35,warnMax:65,criticalMin:30,criticalMax:70},light:{safeMax:150,warnMax:150,criticalMax:300}}
 ];
 
 function writeToTerminal(message,type='data'){
