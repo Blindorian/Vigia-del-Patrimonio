@@ -67,20 +67,12 @@ def nombre_modo():
         return "Papel"
     elif modo_actual==MODO_TEXTILES:
         return "Textiles"
-    elif modo_actual==MODO_METAL:
+    elif:
         return "Metal"
 
 def enviar_modo():
     serial.write_line('{"type":"mode","mode_index":'+str(modo_actual)+',"mode":"'+nombre_modo()+'"}')
-
-def mostrar_modo():
-    if modo_actual==MODO_PAPEL:
-        basic.show_string("PAPEL")
-    elif modo_actual==MODO_TEXTILES:
-        basic.show_string("TEXTIL")
-    elif modo_actual==MODO_METAL:
-        basic.show_string("METAL")
-
+    
 def cambiar_modo():
     global modo_actual
     modo_actual=(modo_actual+1)%TOTAL_MODOS
@@ -100,29 +92,36 @@ def on_button_pressed_a():
 input.on_button_pressed(Button.A,on_button_pressed_a)
 
 def actualizar_sensores():
-    global luz,temp_c,hum_c,temperatura,humedad
-    luz=pins.analog_read_pin(PIN_LDR)
-    basic.pause(100)
-    dht11_dht22.query_data(DHTtype.DHT11,PIN_DHT,True,False,True)
-    temp_c=dht11_dht22.read_data(dataType.TEMPERATURE)
-    hum_c=dht11_dht22.read_data(dataType.HUMIDITY)
-    if temp_c!=-999:
-        temperatura=temp_c
-    if hum_c!=-999:
-        humedad=hum_c
+    global luz
+    luz = pins.analog_read_pin(PIN_LDR)
+    # global luz,temp_c,hum_c,temperatura,humedad
+    #luz=pins.analog_read_pin(PIN_LDR)
+    #basic.pause(100)
+    #dht11_dht22.query_data(DHTtype.DHT11,PIN_DHT,True,False,True)
+    #temp_c=dht11_dht22.read_data(dataType.TEMPERATURE)
+    #hum_c=dht11_dht22.read_data(dataType.HUMIDITY)
+    #if temp_c!=-999:
+    #    temperatura=temp_c
+    #if hum_c!=-999:
+    #    humedad=hum_c
 
 def on_data_received():
     global temperatura,humedad,luz,simulacion_activa,modo_actual
-    comando=serial.read_until(serial.delimiters(Delimiters.NEW_LINE)).strip()
+
+    comando=serial.read_until(
+        serial.delimiters(Delimiters.NEW_LINE)
+    ).strip()
+
     comando_upper=comando.upper()
+
     if comando_upper.startswith("MODO:") or comando_upper.startswith("MODE:"):
         try:
             nuevo_modo=int(comando.split(":")[1].strip())
+
             if nuevo_modo>=0 and nuevo_modo<TOTAL_MODOS:
                 modo_actual=nuevo_modo
                 enviar_modo()
-                mostrar_modo()
-                basic.clear_screen()
+
         except:
             pass
     elif comando=="incendio":
@@ -188,7 +187,7 @@ def on_forever():
         actualizar_sensores()
     evaluar_riesgo()
     serial.write_line('{"temperature":'+str(temperatura)+',"humidity":'+str(humedad)+',"light":'+str(luz)+',"mode_index":'+str(modo_actual)+'}')
-    basic.pause(1000)
+    basic.pause(1500)
 
 basic.forever(on_forever)
 ```
