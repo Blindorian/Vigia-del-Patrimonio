@@ -94,16 +94,16 @@ input.on_button_pressed(Button.A,on_button_pressed_a)
 def actualizar_sensores():
     global luz
     luz = pins.analog_read_pin(PIN_LDR)
-    # global luz,temp_c,hum_c,temperatura,humedad
-    #luz=pins.analog_read_pin(PIN_LDR)
-    #basic.pause(100)
-    #dht11_dht22.query_data(DHTtype.DHT11,PIN_DHT,True,False,True)
-    #temp_c=dht11_dht22.read_data(dataType.TEMPERATURE)
-    #hum_c=dht11_dht22.read_data(dataType.HUMIDITY)
-    #if temp_c!=-999:
-    #    temperatura=temp_c
-    #if hum_c!=-999:
-    #    humedad=hum_c
+     global luz,temp_c,hum_c,temperatura,humedad
+    luz=pins.analog_read_pin(PIN_LDR)
+    basic.pause(100)
+    dht11_dht22.query_data(DHTtype.DHT11,PIN_DHT,True,False,True)
+    temp_c=dht11_dht22.read_data(dataType.TEMPERATURE)
+    hum_c=dht11_dht22.read_data(dataType.HUMIDITY)
+    if temp_c!=-999:
+       temperatura=temp_c
+    if hum_c!=-999:
+        humedad=hum_c
 
 def on_data_received():
     global temperatura,humedad,luz,simulacion_activa,modo_actual
